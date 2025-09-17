@@ -1,0 +1,56 @@
+\begin{thebibliography}{10}
+
+\bibitem{rostami2025plug}
+M.~Rostami, A.~Faysal, R.~G. Roshan, H.~Wang, N.~Muralidhar, and Y.-D. Yao,
+  ``Plug-and-play amc: Context is king in training-free, open-set modulation
+  with llms,'' {\em arXiv preprint arXiv:2505.03112}, 2025.
+
+\bibitem{dobre2007survey}
+O.~A. Dobre, A.~Abdi, Y.~Bar-Ness, and W.~Su, ``Survey of automatic modulation
+  classification techniques: classical approaches and new trends,'' {\em IET
+  communications}, vol.~1, no.~2, pp.~137--156, 2007.
+
+\bibitem{jassim2022comparison}
+S.~A. Jassim and I.~Khider, ``Comparison of automatic modulation classification
+  techniques.,'' {\em J. Commun.}, vol.~17, no.~7, pp.~574--580, 2022.
+
+\bibitem{fontaine2024towards}
+J.~Fontaine, A.~Shahid, and E.~De~Poorter, ``Towards a wireless physical-layer
+  foundation model: Challenges and strategies,'' in {\em 2024 IEEE
+  International Conference on Communications Workshops (ICC Workshops)},
+  pp.~1--7, IEEE, 2024.
+
+\bibitem{peng2018modulation}
+S.~Peng, H.~Jiang, H.~Wang, H.~Alwageed, Y.~Zhou, M.~M. Sebdani, and Y.-D. Yao,
+  ``Modulation classification based on signal constellation diagrams and deep
+  learning,'' {\em IEEE transactions on neural networks and learning systems},
+  vol.~30, no.~3, pp.~718--727, 2018.
+
+\bibitem{8963964}
+T.~Huynh-The, C.-H. Hua, Q.-V. Pham, and D.-S. Kim, ``Mcnet: An efficient cnn
+  architecture for robust automatic modulation classification,'' {\em IEEE
+  Communications Letters}, vol.~24, no.~4, pp.~811--815, 2020.
+
+\bibitem{faysal2024nmformer}
+A.~Faysal, M.~Rostami, R.~G. Roshan, H.~Wang, and N.~Muralidhar, ``Nmformer: A
+  transformer for noisy modulation classification in wireless communication,''
+  in {\em 2024 33rd Wireless and Optical Communications Conference (WOCC)},
+  pp.~103--108, IEEE, 2024.
+
+\bibitem{faysal2025denomae}
+A.~Faysal, T.~Boushine, M.~Rostami, R.~G. Roshan, H.~Wang, N.~Muralidhar,
+  A.~Sahoo, and Y.-D. Yao, ``Denomae: A multimodal autoencoder for denoising
+  modulation signals,'' {\em IEEE Communications Letters}, 2025.
+
+\bibitem{faysal2025denomae2}
+A.~Faysal, M.~Rostami, T.~Boushine, R.~G. Roshan, H.~Wang, and N.~Muralidhar,
+  ``Denomae2. 0: Improving denoising masked autoencoders by classifying local
+  patches,'' {\em arXiv preprint arXiv:2502.18202}, 2025.
+
+\bibitem{ahmadi2025unsupervised}
+H.~Ahmadi, S.~E. Mahdimahalleh, A.~Farahat, and B.~Saffari, ``Unsupervised
+  time-series signal analysis with autoencoders and vision transformers: A
+  review of architectures and applications,'' {\em arXiv preprint
+  arXiv:2504.16972}, 2025.
+
+\end{thebibliography}

@@ -1,0 +1,8 @@
+name,noise type,bins,prompt,discrete,k-top,exp,acc,clean-acc,3-pass,3-majority,# prompts,# answers not classify,# Token,# Parameters,,
+gemini-2.5-flash,noisySignal,-,old prompt,FALSE,10,,,,,,,0,,5B,,
+gemini-2.5-flash,noisySignal,10,old prompt,TRUE,10,,0.295,0.295,,,200,0,3K,5B,,
+gemini-2.5-flash,noisySignal,10,ktop+Prompt EN,TRUE,5,,0.39,0.39,,,200,0,1.5K,5B,,
+gemini-2.5 pro,discrete+k-top,10,ktop+Prompt EN,TRUE,5,,69.78%,69.78%,79.52%,72.29%,332,0,1.5K,,,
+,,,,,,,,,,,,,,,,
+o1-mini,noisySignal,-,old prompts,FALSE,10,,0.699195171,0.723958333,0.90060241,0.734939759,332,34,3k+,200B,,
+DeepSeek-R1-Distill-Qwen,noisySignal,-,old prompts,FALSE,10,,47.8,,,,2000,?,3k+,32B,,

@@ -1,0 +1,4 @@
+name,noise type,bins,prompt,discrete,k-top,exp,acc,clean-acc,3-pass,3-majority,# prompts,# answers not classify,# Token
+gemini-2.5-flash,noisySignal,10,ktop+Prompt EN,TRUE,5,,0.39,0.39,,,200,0,1.5K
+gemini-2.5-flash,noisySignal,20,ktop+Prompt EN,TRUE,5,,0.38,0.38,,,200,0,1.5K
+gemini-2.5-flash,noisySignal,30,ktop+Prompt EN,TRUE,5,,,,,,,0,1.5K

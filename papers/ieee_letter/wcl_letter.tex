@@ -1,0 +1,192 @@
+\documentclass[journal]{IEEEtran}
+\usepackage{amsmath,amsfonts}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{array}
+\usepackage[caption=false,font=normalsize,labelfont=sf,textfont=sf]{subfig}
+\usepackage{textcomp}
+\usepackage{stfloats}
+\usepackage{url}
+\usepackage{verbatim}
+\usepackage{graphicx}
+\usepackage{cite}
+\usepackage{booktabs}
+\usepackage{balance}
+\usepackage{todonotes}
+\hyphenation{op-tical net-works semi-conduc-tor IEEE-Xplore}
+% updated with editorial comments 8/9/2021
+
+\begin{document}
+
+\title{Discrete‑LLM‑AMC: Token- and Parameter-Efficient In-Context Automatic Modulation Classification with Discretized Signal Statistics}
+
+\author{Mohammad~Rostami, Atik~Faysal, Reihaneh~Gh.~Roshan, Huaxia~Wang, Nikhil~Muralidhar, and Yu-Dong~Yao
+\thanks{M. Rostami, A. Faysal, H. Wang are with the Department of Electrical and Computer Engineering, Rowan University, Glassboro, NJ, USA (e-mail: \{rostami23, faysal24, wanghu\}@rowan.edu).}
+\thanks{A. Faysal is with the Department of Electrical and Computer Engineering, Rowan University, Glassboro, NJ, USA (e-mail: faysal24@rowan.edu).}
+\thanks{R. Gh. Roshan and N. Muralidhar are with the Department of Computer Science, Stevens Institute of Technology, Hoboken, NJ, USA (e-mail: \{rghasemi, nmurali1\}@stevens.edu).}}
+
+\maketitle
+
+\begin{abstract}
+  Large Language Models (LLMs) can perform Automatic Modulation Classification (AMC) in a training‑free, open‑set manner when equipped with carefully designed in‑context prompts \cite{rostami2025plug}. Building on this prior work, we target the practical bottlenecks of long prompt contexts and large model sizes that impede in‑the‑loop deployment. We present Discrete‑LLM‑AMC, a token‑ and parameter‑efficient variant that: (i) discretizes higher‑order statistics and cumulants into compact symbolic tokens, (ii) prunes the exemplar list via a lightweight top‑k neural prefilter and filters misleading/low‑impact features using rationales extracted from prior LLM responses, and (iii) enforces label‑only predictions through a calibrated prompt template. Together, these changes reduce both input/output tokens and the model parameter footprint by more than half while maintaining competitive accuracy. On synthetic AMC with ten modulation types under noise, a 7B DeepSeek‑R1‑Distill‑Qwen baseline achieves 5.2\% accuracy, whereas our system—using an approximately 5B‑parameter Gemini 2.5 Flash model—attains 39.0\% accuracy. These results demonstrate that careful discretization and context selection can cut inference cost by over 2× while preserving the open‑set, training‑free advantages of prompt‑based AMC and enabling practical in‑the‑loop use.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Automatic modulation classification, large language models, prompt engineering, higher-order statistics.
+\end{IEEEkeywords}
+
+\section{Introduction}
+\todo[inline, color=blue!40]{Need to change results based on the new table(s)}
+\IEEEPARstart{A}{utomatic} Modulation Classification (AMC) is a pivotal technology in modern wireless communication systems, underpinning critical applications such as cognitive radio, spectrum sensing, and interference management. The accurate identification of modulation schemes is essential for efficient spectrum utilization and enhancing the adaptability and reliability of communication networks. However, AMC remains a challenging problem due to the complex interplay of signals with ambient noise, interference, and various channel impairments \cite{dobre2007survey, jassim2022comparison, fontaine2024towards}.
+
+Historically, AMC approaches evolved from traditional feature-based methods, which relied on handcrafted signal features like higher-order statistics, to sophisticated deep learning models. Convolutional Neural Networks (CNNs) and, more recently, Transformer-based architectures, have demonstrated strong performance in capturing complex signal dependencies and achieving high classification accuracy, including in low SNR environments \cite{peng2018modulation,8963964,faysal2024nmformer}. Self-supervised denoising autoencoders further improve robustness and data efficiency under noise \cite{faysal2025denomae,faysal2025denomae2,ahmadi2025unsupervised}. Despite these advancements, most deep learning solutions demand extensive labeled datasets for training and often require retraining or fine-tuning for new operating conditions, limiting robustness across diverse noise scenarios and generalization beyond specific tasks.
+
+Recent work advocates a Wireless Physical-layer Foundation Model (WPFM) to replace siloed task models with a general, adaptable backbone \cite{fontaine2024towards}. As one practical instantiation, LLM prompting expresses higher-order statistics as text to enable training-free, open-set AMC via one-shot reasoning \cite{rostami2025plug}. However, current LLM-based AMC is costly due to long numeric prompts and large models, limiting in-the-loop edge use.
+
+This letter introduces Discrete\,–\,LLM\,–\,AMC, a token- and parameter-efficient variant that preserves the advantages of training-free, open-set prompting while cutting inference cost. We discretize higher-order statistics into compact tokens, prune exemplars via a lightweight top-$k$ shortlist, and enforce label-only responses—together reducing input/output tokens and effective parameter footprint by over $2\times$. On ten-class synthetic AMC under noise, an approximately 5B Gemini 2.5 Flash attains 39.0\% accuracy versus 5.2\% for a 7B DeepSeek-R1-Distill-Qwen baseline, while remaining competitive with 32B models in noiseless settings at a fraction of the compute.
+
+\section{Method}
+We adopt a three-stage, plug-and-play pipeline adapted from prior framework \cite{rostami2025plug}, redesigning each stage for improved efficiency. The pipeline involves: (1) discretizing In-phase/Quadrature (I/Q) signals into compact statistical tokens; (2) assembling a concise prompt using a pruned set of exemplars; and (3) reframing the query to enable constrained decoding.
+
+
+\subsection{Stage 1: Discrete Statistical Tokens (vs. numeric features)}
+Given a complex baseband segment, we compute a compact set of descriptive statistics and cumulant-derived features (e.g., skewness, kurtosis, moments, k-stats) as in \cite{rostami2025plug}. Unlike plug-and-play\cite{rostami2025plug}, which serialized floating-point values verbatim, we map each scalar to one of $B$ bins and emit a short symbolic token per feature. We also remove low-impact fields (e.g., \texttt{nobs/min/max/mean/variance}) and include SNR, reducing per-item fields and replacing long decimal strings with short codes. This discretization cuts prompt tokens and standardizes feature scales for robust prompting.
+
+
+\subsection{Stage 2: Compact Prompt with k-top Exemplar Pruning}
+We first construct a balanced exemplar pool spanning all classes and SNR levels. For each query, we then select at most $K$ exemplars (default $K \le 10$) using a lightweight top-$k$ shortlisting model to identify classes most relevant to the query. In contrast to the large, fixed exemplar sets from previous work~\cite{rostami2025plug}, this dynamic pruning strategy maintains discriminative coverage while substantially reducing the context length. The final prompt is composed of: (i) a concise instruction constraining the model's output to a predefined label set; (ii) the $K$ pruned exemplars represented with discrete tokens; and (iii) the query signal, also in its discretized format.
+
+\paragraph*{Shortlisting Classifier}
+To prune the candidate label space for each query, we train a lightweight visual classifier on signal constellation diagrams. The classifier's architecture is a ViT encoder, initialized with weights from a pretrained autoencoder to facilitate efficient feature extraction. At inference, this model identifies the top-$k$ most probable labels for a given query. These labels are then used to dynamically construct the restricted multiple-choice set in the prompt, acting as a computationally efficient pre-filter that reduces prompt length with negligible impact on class coverage.
+% Representative exemplars are chosen by computing encoder features for the pool and taking samples closest to each class centroid. (ii) select $k$ exemplars from those classes
+
+
+\subsection{Stage 3: Improving Prompt Formulation with Constrained Decoding}
+Finally, to enhance reliability and enable constrained decoding, we employ a structured prompt formulation. The instruction block is refined with more detailed explanations and optimized templates. Crucially, the query block is reframed from an open-ended question into a multiple-choice format, providing the model with an enumerated list of valid class options. While this detailed formulation increases the raw prompt length, its structure allows for more efficient inference. In conjunction with the token-saving measures from Stages 1--2, this methodology yields a net efficiency gain of greater than $2\times$ in token/parameter usage while maintaining competitive accuracy.
+
+\todo[inline, color=blue!40]{A new picture of the pipeline}
+\todo[inline, color=blue!40]{A new figure of the prompt}
+
+\section{Experimental Setup}
+\todo[inline, color=green!40]{How should we refer to the WOCC paper?}
+\paragraph{Dataset}
+We adopt the synthetic dataset and evaluation protocol from Rostami et al.~\cite{rostami2025plug}. The dataset consists of I/Q signals representing 10 digital modulation types: 4ASK, 4PAM, 8ASK, 16PAM, CPFSK, DQPSK, GFSK, GMSK, OOK, and OQPSK. Each signal is generated across a Signal-to-Noise Ratio (SNR) range of $-10$ dB to $+10$ dB. All evaluations are performed in a one-shot, in-context learning setting where the model must classify a query signal given a single example of selected class by the shortlisting classifier.
+
+\paragraph{Baselines}
+Our primary baseline is the plug-and-play framework~\cite{rostami2025plug}, which prompts models with raw floating-point statistical features and a comprehensive, unpruned set of exemplars. To assess its performance, we apply this method to several open-weight models, including \texttt{DeepSeek-R1-Distill-Qwen-7B}, and \texttt{DeepSeek-R1-Distill-Qwen-32B}. Additionally, we report results from a larger, proprietary model (\texttt{o3-mini}) to establish a practical upper bound on performance. We also included results from other transformers-based models, includingthe Nmformer~\cite{faysal2024nmformer} and DenoMAE~\cite{faysal2025denomae} for comparison.
+
+\paragraph{Proposed Method and Models}
+We evaluate our three-stage pipeline, which integrates discretized statistical tokens, dynamic top-$k$ exemplar pruning via a shortlisting classifier, and a structured multiple-choice prompt format. For our experiments, we use Google's Gemini models, accessed via their public API:
+\begin{itemize}
+    \item {\texttt{Gemini 2.5 Flash:}} A highly efficient model optimized for speed and low-cost inference.
+    \item {\texttt{Gemini 2.5 Pro:}} A state-of-the-art, high-performance model.
+\end{itemize}
+These models were selected to analyze our method's effectiveness across different points on the performance-efficiency spectrum. Our primary metrics are classification accuracy across the SNR range and the final prompt length in tokens.
+
+\section{Results}
+Our experimental results validate the effectiveness of the proposed Discrete-LLM-AMC framework, demonstrating a favorable trade-off between model efficiency and classification accuracy across a series of targeted evaluations.
+
+The primary findings, summarized in Table~\ref{tab:results}, highlight the significant advantages of our discretized prompting strategy. The baseline plug-and-play approach, which uses raw numeric features, proves ineffective for smaller models; the 7B DeepSeek model achieves only 5.20\% accuracy. In stark contrast, our method enables the even smaller 5B Gemini 2.5 Flash model to reach a competitive 45.41\% accuracy. This result is particularly noteworthy as it is comparable to the performance of the much larger 32B DeepSeek model (47.80\%) but is achieved with a prompt size of just 1.2K tokens—less than half the 3K+ tokens required by the baseline. Furthermore, when applying our method with the more powerful Gemini 2.5 Pro, accuracy climbs to 69.78\%, closely approaching the 69.92\% performance of the proprietary 200B-parameter o3-mini model, again with a significantly smaller token and parameter footprint. While specialized supervised models like DenoMAE still hold an edge in absolute accuracy (81.30\%), our approach offers the crucial advantages of being entirely training-free and open-set.
+
+We then investigate the critical impact of the exemplar selection strategy on model performance, with results detailed in Table~\ref{tab:exemplars}. A deterministic but naive strategy of selecting exemplars closest to class centroids proved suboptimal, yielding only 8.63\% accuracy, likely because centroidal samples lack the diversity needed for robust in-context learning. Conversely, using a random selection strategy introduced high performance variance, with two separate runs achieving accuracies of 39.00\% and 16.47\%. This instability underscores the sensitivity of LLMs to the choice of in-context examples and highlights the unreliability of a purely random approach for practical deployment. These findings validate the necessity of a sophisticated and stable exemplar pruning mechanism.
+
+Further ablations confirm the benefits of maintaining a compact prompt structure, as shown in Table~\ref{tab:ktops}. This experiment analyzes the effect of varying the number of exemplars ($k$) on accuracy and token count. We observe that increasing $k$ from 4 to 5 provides only a marginal accuracy improvement (from 44.50\% to 45.41\%) while increasing the prompt length from 1.2K to 1.4K tokens. This indicates diminishing returns beyond a small number of carefully selected examples. More importantly, a significantly larger context, created by setting $k=10$ and using 10 discretization bins, proves detrimental to performance. In this case, the prompt size balloons to over 3K tokens, and the accuracy drops sharply to 29.50\%. This result strongly supports our hypothesis that a concise, focused context is more effective than a large one that may contain distracting or irrelevant information.
+
+Finally, we examine the effect of discretization granularity in Table~\ref{tab:bins}. The results reveal a clear and monotonic trend: coarser quantization consistently leads to better performance in this one-shot, noisy setting. With a fixed $k=5$, accuracy is highest at 45.41\% when using just 5 bins. As the number of bins increases, providing a finer-grained representation of the statistical features, accuracy steadily degrades, dropping to 39.00\% with 10 bins and eventually to 37.00\% with 30 bins. This suggests that fine-grained distinctions in feature values are less robust to signal noise and that a more abstract, symbolic representation is more conducive to the model's reasoning process.
+
+\begin{table}[!t]
+\centering
+\caption{Accuracy and Efficiency Summary (Representative)}
+\label{tab:results}
+\begin{tabular}{lccc}
+\hline
+\textbf{Model}            & \textbf{Parameters}  & \textbf{\# Tokens} & \textbf{Accuracy (\%)} \\
+\hline
+Nmformer\cite{faysal2024nmformer}                  & -      & -              & 71.60\%                \\
+DenoMAE\cite{faysal2025denomae}                   & -      & -              & \textbf{81.30\%}       \\
+DenoMAE2.0\cite{faysal2025denomae2}                & -      & -              & 82.40\%                \\
+\hline
+DeepSeek-R1-Distill-Qwen\cite{rostami2025plug}  & 7B                   & 3K+              & 5.20\%                 \\
+DeepSeek-R1-Distill-Qwen\cite{rostami2025plug}  & 32B                  & 3K+              & 47.80\%                \\
+OpenAI’s o3-mini\cite{rostami2025plug}          & 200B                 & 3K+              & 69.92\%                \\
+\hline
+Google's gemini-2.5-flash & 5B                   & 1.2K              & \textbf{45.41}\%               \\
+Google's gemini-2.5-pro   & -                    & 1.4K              & \textbf{69.78}\%                \\
+\hline
+\end{tabular}
+\end{table}
+
+Exemplar pool construction also affects performance in the shortlisting stage. As shown in Table~\ref{tab:exemplars}, random exemplar pools yield high variance (16.47--39.00\%), while a centroid-based pool underperforms (8.63\%). This suggests that coverage and diversity of the exemplar set are more critical than proximity to class centroids.
+
+\begin{table}[!t]
+\centering
+\caption{Effects of different exemplar lists (Gemini-2.5-flash)}
+\label{tab:exemplars}
+\begin{tabular}{lccc}
+\hline
+\textbf{Selection}                & \textbf{\# Bins} & \textbf{k-top} & \textbf{Accuracy (\%)} \\
+\hline
+randomly selection 1              & 10                & 5              & 39.00 \\
+randomly selection 2              & 10                & 5              & 16.47  \\
+shortlisting classifier centroids & 10                & 5              & 8.63 \\
+\hline
+\end{tabular}
+\end{table}
+
+We next study the effect of top-$k$ pruning and token budget (Table~\ref{tab:ktops}). With 5 discretization bins, increasing $k$ from 4 to 5 yields a small gain (44.50\% to 45.41\%) while the prompt grows from approximately 1.2K to 1.4K tokens, indicating diminishing returns beyond $k\approx5$. A larger context with 10 bins and $k{=}10$ inflates the prompt to 3K+ tokens and reduces accuracy (29.50\%), underscoring the importance of compact contexts.
+ 
+\begin{table}[!t]
+\centering
+\caption{Ablations: Effects of pruning exemplars (Gemini-2.5-flash)}
+\label{tab:ktops}
+\begin{tabular}{cccc}
+\hline
+\textbf{\# Bins} & \textbf{k-top} & \textbf{\# Tokens} & \textbf{Accuracy (\%)} \\
+\hline
+5  & 2  & 0.9K & 49.50 \\
+5  & 3  & 1.0K & 42.50 \\
+5  & 4  & 1.2K & 44.50 \\
+5  & 5  & 1.4K & 45.41 \\
+10 & 10 & 3K+  & 29.50 \\
+\hline
+\end{tabular}
+\end{table}
+
+We finally isolate the effect of the discretization granularity in Table~\ref{tab:bins}. Accuracy degrades monotonically as the number of bins increases (45.41\% at 5 bins down to 37.00\% at 30 bins), indicating that coarser quantization is more robust for this noisy, one-shot setting.
+
+\begin{table}[!t]
+\centering
+\caption{Ablations: Effects of discretizing bins (Gemini-2.5-flash)}
+\label{tab:bins}
+\begin{tabular}{ccc}
+\hline
+\textbf{\# Bins} & \textbf{k-top} & \textbf{Accuracy (\%)} \\
+\hline
+5                & 5              & 45.41                  \\
+10               & 5              & 39.00                  \\
+20               & 5              & 38.00                  \\
+30               & 5              & 37.00                  \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Complexity Analysis}
+\textbf{Token Budget.} Our framework achieves a substantial reduction in computational cost, primarily through a more efficient use of the token budget. As demonstrated in Table~\ref{tab:results}, the baseline plug-and-play approach requires prompts exceeding 3,000 tokens. In contrast, our method, with its combination of feature discretization and dynamic exemplar pruning, reduces this requirement to between 1.2K and 1.4K tokens (Table~\ref{tab:ktops}), a decrease of over 50\%. This efficiency stems from two key design choices: (i) reducing the number of statistical features from 21 floating-point values to 17 compact symbolic tokens, and (ii) pruning the number of in-context exemplars to a small, targeted set ($k \le 5$), thereby minimizing redundant information and focusing the model's attention.
+
+\textbf{Parameter Budget.} Beyond token efficiency, our approach enables the use of significantly smaller and more practical LLMs without a prohibitive loss in accuracy. Table~\ref{tab:results} shows that our 5B Gemini 2.5 Flash model achieves an accuracy of 45.41\%, which is highly competitive with the 47.80\% accuracy of the much larger 32B DeepSeek baseline. This represents an 84\% reduction in model parameters, which translates directly to substantially lower VRAM requirements and faster inference speeds. This dramatic reduction in the parameter budget makes in-context AMC feasible for deployment on resource-constrained hardware and edge devices, which is a primary goal of this work.
+
+\section{Discussion}
+Our results demonstrate that with careful prompt engineering, compact LLMs can serve as effective, training-free classifiers for AMC. The core insight of our work is that for in-context learning on noisy, structured data, abstract and concise representations are superior to fine-grained, high-dimensional ones. This "less is more" principle is evident in our key findings: coarser discretization bins (Table~\ref{tab:bins}) and fewer, more targeted exemplars (Table~\ref{tab:ktops}) consistently yield better performance. By converting complex floating-point statistics into a small set of symbolic tokens, we not only reduce the token footprint but also provide the LLM with a representation that is more robust to noise and less prone to distraction.
+
+The significant performance gap between our 5B model and the 7B baseline (45.41\% vs. 5.20\%) underscores that architecture and pre-training are not the only determinants of success; the structure of the prompt is paramount. Our framework achieves a compelling accuracy-efficiency trade-off, making LLM-based AMC practical for real-time applications on constrained hardware. While specialized, supervised models currently lead in absolute accuracy, our approach offers unparalleled flexibility and zero-shot generalization. Future work will focus on closing this performance gap by (i) developing adaptive, data-driven methods for feature selection and binning; (ii) integrating SNR-aware prompting to allow the model to dynamically adjust its reasoning; and (iii) exploring knowledge distillation from larger models like Gemini 2.5 Pro to further enhance the accuracy of the compact Gemini 2.5 Flash model without sacrificing its efficiency.
+
+\section{Conclusion}
+We introduced Discrete-LLM-AMC, a token- and parameter-efficient framework that makes training-free, in-context automatic modulation classification practical and effective. By discretizing signal statistics into compact symbolic tokens and employing a pruned, targeted prompt structure, we drastically reduce the computational requirements for LLM-based AMC. Our experiments show that this approach cuts prompt length by over 50\% and enables a 5B-parameter model to achieve accuracy competitive with a 32B-parameter baseline. These findings demonstrate a viable path toward deploying large language models in resource-constrained wireless communication systems, preserving the benefits of open-set classification while meeting the demands of real-world efficiency.
+
+\balance
+\bibliographystyle{ieeetr}
+\bibliography{egbib}
+
+\end{document}
+
+
