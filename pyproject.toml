@@ -1,0 +1,37 @@
+[tool.poetry]
+name = "discrete-llm-amc"
+version = "0.1.0"
+description = "finetuning and evaluation start"
+authors = ["MoeRU <woreom@gmail.com>"]
+readme = "README.md"
+packages = [{include = "*", from = "src"}]
+
+[tool.poetry.dependencies]
+python = ">=3.10"
+unsloth = "*"
+scikit-learn = "*"
+matplotlib = "*"
+ninja = "*"
+cmake = "*"
+wheel = "*"
+pybind11 = "*"
+xformers = "*"
+vllm = "*"
+triton = "*"
+ipywidgets = "*"
+ipykernel = "*"
+chardet = "*"
+openpyxl = "*"
+wandb = "*"
+torch = { version = "*", source = "pytorch" }
+torchvision = { version = "*", source = "pytorch" }
+torchaudio = { version = "*", source = "pytorch" }
+
+[[tool.poetry.source]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/nightly/cu128"
+priority = "explicit"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
