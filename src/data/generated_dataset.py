@@ -61,6 +61,20 @@ def create_dataset_example_paths(base_dir, noise_mode='noiselessSignal'):
         'OQPSK': [f'{base_dir}/test/{noise_mode}/OQPSK_-0.24dB__006_20250127_145655.npy'],
         'OOK': [f'{base_dir}/test/{noise_mode}/OOK_-0.17dB__091_20250127_164311.npy'],
     }
+
+    # -30dB
+    # example_paths = {
+    #     '4ASK': [f'{base_dir}/train/{noise_mode}/4ASK_-30.01dB__050_20250924_121717.npy'],
+    #     '4PAM': [f'{base_dir}/train/{noise_mode}/4PAM_-30.06dB__011_20250924_121815.npy'],
+    #     '8ASK': [f'{base_dir}/train/{noise_mode}/8ASK_-30.44dB__090_20250924_121732.npy'],
+    #     '16PAM': [f'{base_dir}/train/{noise_mode}/16PAM_-30.05dB__050_20250924_121843.npy'],
+    #     'CPFSK': [f'{base_dir}/train/{noise_mode}/CPFSK_-30.65dB__077_20250924_121757.npy'],
+    #     'DQPSK': [f'{base_dir}/train/{noise_mode}/DQPSK_-32.18dB__055_20250924_121835.npy'],
+    #     'GFSK': [f'{base_dir}/train/{noise_mode}/GFSK_-31.48dB__008_20250924_121801.npy'],
+    #     'GMSK': [f'{base_dir}/train/{noise_mode}/GMSK_-32.47dB__040_20250924_121917.npy'],
+    #     'OQPSK': [f'{base_dir}/train/{noise_mode}/OQPSK_-33.82dB__095_20250924_121746.npy'],
+    #     'OOK': [f'{base_dir}/train/{noise_mode}/OOK_-31.72dB__095_20250924_121710.npy'],
+    # }
     
     return example_paths
 
@@ -310,9 +324,10 @@ def get_processed_data(
 
 if __name__ == "__main__":
     N_BINS = 5
-    TOP_K = 2
+    TOP_K = 5
     NOISE_MODE = 'noisySignal'
-    train_signal_paths, example_paths, train_signal_labels, train_signal_snr = dataset_example_maker(base_dir="../../data/own/unlabeled_10k/", mode='train', noise_mode=NOISE_MODE)
+    DATASET_FOLDER = 'unlabeled_10k'
+    train_signal_paths, example_paths, train_signal_labels, train_signal_snr = dataset_example_maker(base_dir=f"../../data/own/{DATASET_FOLDER}/", mode='train', noise_mode=NOISE_MODE)
     options = list(set(train_signal_labels))
     
     # train_signal_paths = train_signal_paths[:10]
@@ -326,30 +341,30 @@ if __name__ == "__main__":
                          'kstatvar_1', 'kstatvar_2',
                          ]
     
-    train_data = get_processed_data(train_signal_paths, train_signal_labels, train_signal_snr, feature_names, example_paths, scaler=None, discretizers=None, decimal_precision=3, add_context=True, n_bins=N_BINS)  
+    # train_data = get_processed_data(train_signal_paths, train_signal_labels, train_signal_snr, feature_names, example_paths, scaler=None, discretizers=None, decimal_precision=3, add_context=True, n_bins=N_BINS)  
     
-    # Save the processed data to a file
-    save_processed_data(train_data, f'../../data/own/unlabeled_10k/train_{NOISE_MODE}_{N_BINS}_{TOP_K}_data.pkl')
-    print("Processed train data saved successfully.")
+    # # Save the processed data to a file
+    # save_processed_data(train_data, f'../../data/own/{DATASET_FOLDER}/train_{NOISE_MODE}_{N_BINS}_{TOP_K}_data.pkl')
+    # print("Processed train data saved successfully.")
 
-    # with open(f'../../data/own/unlabeled_10k/train_{NOISE_MODE}_{N_BINS}_{TOP_K}_data.pkl', 'rb') as f:
-    #     train_data = pickle.load(f)
+    with open(f'../../data/own/{DATASET_FOLDER}/train_{NOISE_MODE}_{N_BINS}_{TOP_K}_data.pkl', 'rb') as f:
+        train_data = pickle.load(f)
 
 
-    test_signal_paths = glob(f'../../data/own/unlabeled_10k/test/{NOISE_MODE}/*.npy')
+    test_signal_paths = glob(f'../../data/own/{DATASET_FOLDER}/test/{NOISE_MODE}/*.npy')
     test_signal_labels = [get_dataset_label(sig) for sig in test_signal_paths]
     test_signal_snr = [get_dataset_snr(sig) for sig in test_signal_paths]
 
     test_signal_paths = test_signal_paths
 
-    ktop_path = F'../../data/own/unlabeled_10k/ntop{TOP_K}_predictions.json'
+    ktop_path = f'../../data/own/{DATASET_FOLDER}/rf_top{TOP_K}_predictions.json'
     ktop_info = load_from_json((ktop_path))
     ktop_info = [ktop_info[os.path.basename(sig_path)]['noiseLessImg' if NOISE_MODE == 'noiselessSignal' else 'noisyImg'] for sig_path in test_signal_paths]
 
     test_data = get_processed_data(test_signal_paths, test_signal_labels, test_signal_snr, feature_names, example_paths, scaler=train_data['scaler'], discretizers=train_data['discretizers'], decimal_precision=3, add_context=True, ktop_info=ktop_info, n_bins=N_BINS)
 
     # Save the processed test data to a file
-    save_processed_data(test_data, f'../../data/own/unlabeled_10k/test_{NOISE_MODE}_{N_BINS}_{TOP_K}_data.pkl')
+    save_processed_data(test_data, f'../../data/own/{DATASET_FOLDER}/rf_test_{NOISE_MODE}_{N_BINS}_{TOP_K}_data.pkl')
     print("Processed test data saved successfully.")
 
 # %%
